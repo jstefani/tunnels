@@ -9,8 +9,6 @@ plug an audio source into norns
 - K1 (hold): clear buffers
 - K2 & K3: randomize voices/panning (manual mode)
 
-PARAMETERS > PSET saves the full script state (mode, control, input, and all four voice settings). Loading a PSET restores those values instead of keeping the currently loaded set. Save after randomizing (K2/K3) to snapshot the result.
-
 ## passersby-tnl
 one buffer, manual control only version of tunnels added to Passersby (https://llllllll.co/t/21089)
 - page 5: tunnel modes
