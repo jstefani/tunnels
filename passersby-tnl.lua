@@ -1,5 +1,5 @@
 -- Passersby w/ tunnels
--- 1.1.1 @markeats
+-- 1.1.2 @markeats
 -- llllllll.co/t/21089
 --
 -- MIDI controlled West Coast
@@ -68,8 +68,6 @@ local drift = {actual = 0, dirty = true}
 
 engine.name = "Passersby"
 
---local tunnelgroup
-local tunnelmode = 1
 local tgroup
 local tunnelmodes_list
 local tunnelmodes = {"off", "fractal landscape", "disemboguement", "post-horizon", "coded air", "failing lantern", "blue cat", "crawler"}
@@ -271,9 +269,7 @@ end
 
 -- tunnels
 local function update_tunnels()
-  local tm = tunnelmode
-  local tg = tgroup
-  tn.randomize(tm, tg)
+  tn.randomize(params:get("tunnel_mode"), tgroup)
 end
 
 -- Updaters
@@ -525,13 +521,11 @@ function enc(n, delta)
   -- tunnels
   elseif pages.index == 5 then
     if n == 2 then
-      tunnelmodes_list:set_index_delta(util.clamp(delta, -1, 1))
-      tunnelmode = tunnelmodes_list.index
-      --softcut.buffer_clear()
+      params:delta("tunnel_mode", util.clamp(delta, -1, 1))
       tgroup = 1
-      update_tunnels(tunnelmode)
+      update_tunnels()
       tgroup = 2
-      update_tunnels(tunnelmode)
+      update_tunnels()
       screen_dirty = true
     end
   end
@@ -546,11 +540,11 @@ function key(n, z)
         softcut.buffer_clear()
       elseif n == 2 then
         tgroup = 1
-        update_tunnels(tunnelmode)
+        update_tunnels()
         redraw()
       elseif n == 3 then
         tgroup = 2
-        update_tunnels(tunnelmode)
+        update_tunnels()
         redraw()
       end
     end
@@ -759,11 +753,13 @@ function init()
   reverb_mix.actual = params:get("reverb_mix")
   
   -- tunnels
+  params:add_separator("tunnels_main", "tunnels")
+  params:add_option("tunnel_mode", "mode", tunnelmodes, 1)
+  params:set_action("tunnel_mode", function(v)
+    if tunnelmodes_list then tunnelmodes_list:set_index(v) end
+    screen_dirty = true
+  end)
   tn.init()
-  -- need to set to 0 here for some reason
-  for i=1, 4 do
-    softcut.level(i, 0)
-  end
   
   -- Init UI
   
@@ -895,7 +891,17 @@ function init()
     end
   end
   screen_refresh_metro:start(1 / SCREEN_FRAMERATE)
-  
+
+  params.action_read = function(_, silent)
+    if not silent then
+      params:bang()
+    elseif tunnelmodes_list then
+      tunnelmodes_list:set_index(params:get("tunnel_mode"))
+    end
+    screen_dirty = true
+  end
+
+  params:default()
 end
 
 

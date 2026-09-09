@@ -1,5 +1,5 @@
 -- tunnels
--- v1.2 @speakerdamage
+-- v1.3 @speakerdamage
 -- experiments in stereo delay
 -- https://llllllll.co/t/21973
 -- ---------------------
@@ -21,7 +21,7 @@
 --
 -- please add and share 
 -- new modes
--- updated 11.14.2019
+-- updated 09.09.2026
 
 engine.name = "TestSine"
 
@@ -38,25 +38,20 @@ local screen_dirty = true
 local current_freq = -1
 local last_freq = -1
 local tgroup
-local tunnelmode = 1
 local tunnelmodes_list
 local tunnelmodes = {"off", "fractal landscape", "disemboguement", "post-horizon", "coded air", "failing lantern", "blue cat", "crawler", "hanging mosses", "rate filter"}
-local tunnelcontrol = 1
 local tunnelcontrols_list
 local tunnelcontrols = {"manual", "input frequency", "input amplitude"}
-local tunnelinput = 1
 local tunnelinput_list
 local tunnelinputs = {"one lane", "two lanes"}
 
 local function update_tunnels()
-  local tm = tunnelmode
-  local tg = tgroup
-  tn.randomize(tm, tg)
+  tn.randomize(params:get("tunnel_mode"), tgroup)
 end
 
 local function update_freq(freq)
   current_freq = freq
-  if tunnelcontrol == 2 then
+  if params:get("tunnel_control") == 2 then
     
     if current_freq > 0 then last_freq = current_freq end
     if current_freq > 60 and current_freq < 260 then
@@ -73,7 +68,7 @@ end
 local function update_vol(cvol)
   local power = 10^2
   current_vol = math.floor(cvol * power) / power
-  if tunnelcontrol == 3 then
+  if params:get("tunnel_control") == 3 then
     if current_vol > 0.01 then 
       tgroup = 1
       update_tunnels()
@@ -126,9 +121,7 @@ function enc(n, delta)
   
   if pages.index == 2 then
     if n == 2 then
-      tunnelmodes_list:set_index_delta(util.clamp(delta, -1, 1))
-      tunnelmode = tunnelmodes_list.index
-      --softcut.buffer_clear()
+      params:delta("tunnel_mode", util.clamp(delta, -1, 1))
       tgroup = 1
       update_tunnels()
       tgroup = 2
@@ -136,14 +129,11 @@ function enc(n, delta)
     end
   elseif pages.index == 3 then
     if n == 2 then
-      tunnelcontrols_list:set_index_delta(util.clamp(delta, -1, 1))
-      tunnelcontrol = tunnelcontrols_list.index
+      params:delta("tunnel_control", util.clamp(delta, -1, 1))
     end
   elseif pages.index == 4 then
     if n == 2 then
-      tunnelinput_list:set_index_delta(util.clamp(delta, -1, 1))
-      tunnelinput = tunnelinput_list.index
-      update_input(tunnelinput)
+      params:delta("tunnel_input", util.clamp(delta, -1, 1))
     end
   end
   screen_dirty = true
@@ -173,7 +163,24 @@ function init()
   tunnelmodes_list = UI.ScrollingList.new(8, 8, 1, tunnelmodes)
   tunnelcontrols_list = UI.ScrollingList.new(8, 8, 1, tunnelcontrols)
   tunnelinput_list = UI.ScrollingList.new(8, 8, 1, tunnelinputs)
-  
+
+  params:add_separator("tunnels_main", "tunnels")
+  params:add_option("tunnel_mode", "mode", tunnelmodes, 1)
+  params:set_action("tunnel_mode", function(v)
+    tunnelmodes_list:set_index(v)
+    screen_dirty = true
+  end)
+  params:add_option("tunnel_control", "control", tunnelcontrols, 1)
+  params:set_action("tunnel_control", function(v)
+    tunnelcontrols_list:set_index(v)
+    screen_dirty = true
+  end)
+  params:add_option("tunnel_input", "input", tunnelinputs, 1)
+  params:set_action("tunnel_input", function(v)
+    tunnelinput_list:set_index(v)
+    update_input(v)
+  end)
+
   params:add{type = "option", id = "in_channel", name = "In Channel", options = {"Left", "Right"}}
   params:add{type = "option", id = "note", name = "Note", options = MusicUtil.NOTE_NAMES, default = 10, action = function(value)
     engine.hz(MusicUtil.note_num_to_freq(59 + value))
@@ -183,9 +190,7 @@ function init()
     engine.amp(value)
     screen_dirty = true
   end}
-  
-  params:bang()
-  
+
   -- Polls
   
   local pitch_poll_l = poll.set("pitch_in_l", function(value)
@@ -219,10 +224,19 @@ function init()
   end
   screen_refresh_metro:start(1 / SCREEN_FRAMERATE)
   tn.init()
-  -- need to set to 0 here for some reason
-  for i=1, 4 do
-    softcut.level(i, 0)
+
+  params.action_read = function(_, silent)
+    if not silent then
+      params:bang()
+    else
+      tunnelmodes_list:set_index(params:get("tunnel_mode"))
+      tunnelcontrols_list:set_index(params:get("tunnel_control"))
+      tunnelinput_list:set_index(params:get("tunnel_input"))
+    end
+    screen_dirty = true
   end
+
+  params:default()
 end
 
 function redraw()
